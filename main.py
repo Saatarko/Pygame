@@ -1,7 +1,7 @@
-import sys
-
 import pygame
 import math
+
+from models import Player, Bullet
 
 pygame.init()
 
@@ -33,47 +33,7 @@ FPS = 60
 
 pygame.display.set_caption('Всплывающее сообщение')
 
-class Player:
-    def __init__(self, x, y, width, height, color):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-        self.color = color
-        self.surface = pygame.Surface((self.width, self.height))  # Создаем поверхность для игрока
-        self.surface.fill(self.color)  # Заполняем поверхность цветом
-        self.rect = self.surface.get_rect(topleft=(self.x, self.y))  # Создаем Rect на основе surface
 
-    def draw(self, screen):
-        screen.blit(self.surface, self.rect)  # Рисуем поверхность на экране
-
-    def move(self, dx, dy):
-        self.rect.x += dx
-        self.rect.y += dy
-
-class Bullet:
-    def __init__(self, x, y, x_dir, y_dir, color, speed=5):
-        self.x = x
-        self.y = y
-        self.x_dir = x_dir
-        self.y_dir = y_dir
-        self.color = color
-        self.speed = speed
-        self.rect = pygame.Rect(x - 5, y - 5, 10, 10)
-
-    def move(self):
-        self.x += self.x_dir * self.speed
-        self.y += self.y_dir * self.speed
-        self.rect.topleft = (self.x, self.y)
-
-    def draw(self, screen):
-        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), 5)
-
-    def check_collision(self, obstacles):
-        for obstacle in obstacles:
-            if self.rect.colliderect(obstacle):
-                return True
-        return False
 
 
 def show_popup(message, duration=3000):
@@ -116,8 +76,10 @@ def menu(game_over=False, message = None):
         # Кнопки выбора игрока
         button_one = font.render('Игрок 1 (Синий)', True, BLUE)
         button_two = font.render('Игрок 2 (Зеленый)', True, GREEN)
+        button_three = font.render('Выход', True, RED)
         sc.blit(button_one, (W // 2 - button_one.get_width() // 2, H // 2 + 10))
         sc.blit(button_two, (W // 2 - button_two.get_width() // 2, H // 2 + 50))
+        sc.blit(button_three, (W // 2 - button_three.get_width() // 2, H // 2 + 90))
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -134,6 +96,9 @@ def menu(game_over=False, message = None):
 
                     current_player = "two"
                     return main_game()
+                elif button_three.get_rect(topleft=(W // 2 - button_three.get_width() // 2, H // 2 + 90)).collidepoint(mouse_pos):
+                    pygame.quit()
+                    exit()
 
         pygame.display.flip()
 
@@ -166,6 +131,7 @@ def main_game():
     # Список для хранения всех выстрелов
     bullets = []
 
+
     # Список для хранения всех препятствий
     obstacles = [
         pygame.Rect(250, 200, 80, 20),
@@ -195,7 +161,6 @@ def main_game():
 
     while True:
 
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit()
@@ -203,7 +168,7 @@ def main_game():
                 # Определяем текущие координаты игрока
                 if current_player == "one":
                     player_rect = player_one.rect
-                if current_player == "two":
+                elif current_player == "two":
                     player_rect = player_two.rect
 
                 # Инициализируем начальные координаты пули (по центру прямоугольника игрока)
@@ -224,35 +189,33 @@ def main_game():
                 x_direction = dx / length
                 y_direction = dy / length
 
-                # Создаем объект пули для проверки столкновений
-                bullet_rect = pygame.Rect(x_cir - 5, y_cir - 5, 10, 10)
+                # Определяем цвет пули в зависимости от игрока
+                if current_player == "one":
+                    color_ball = player_one.color
+                elif current_player == "two":
+                    color_ball = player_two.color
 
-                # Добавляем новый шар в список, если нет столкновений
-                if not check_collision_with_obstacles_and_bounds(bullet_rect):
-                    if current_player == "one":
-                        color_ball = player_one.color
-                    if current_player == "two":
-                        color_ball = player_two.color
-                    bullets.append({"x": x_cir, "y": y_cir, "x_dir": x_direction, "y_dir": y_direction,
-                                    "color": color_ball})
+                # Создаем объект пули
+                bullet = Bullet(x_cir, y_cir, x_direction, y_direction, color_ball)
+
+                # Проверяем столкновение пули с препятствиями
+                if not bullet.check_collision(obstacles):
+                    bullets.append(bullet)  # Добавляем пулю в список, если нет коллизии
 
         # Обновляем позицию каждого шарика
         for bullet in bullets[:]:
-            bullet["x"] += bullet["x_dir"] * ball_speed
-            bullet["y"] += bullet["y_dir"] * ball_speed
+            # Перемещение пули
+            bullet.move()
 
-            # Создаем объект круга для проверки столкновений
-            bullet_rect = pygame.Rect(bullet["x"] - 5, bullet["y"] - 5, 10, 10)
-
-            # Проверяем столкновение шарика с препятствиями
-            if check_collision_with_obstacles_and_bounds(bullet_rect):
-                bullets.remove(bullet)  # Удаляем шарик, если он сталкивается с препятствием
-                continue  # Переходим к следующему шарику
+            # Проверяем столкновение пули с препятствиями
+            if bullet.check_collision(obstacles):
+                bullets.remove(bullet)
+                continue  # Переходим к следующей пуле
 
             # Проверяем попадание в другого игрока
-            for player in [player_one, player_two]:  # Переходим на работу с объектами игрока напрямую
-                if check_bullet_collision(bullet_rect, player.rect):  # Проверяем столкновение пули с rect игрока
-                    if bullet["color"] != player.color:  # Проверка, что пуля другого цвета
+            for player in [player_one, player_two]:
+                if bullet.rect.colliderect(player.rect):  # Проверяем столкновение пули с rect игрока
+                    if bullet.color != player.color:  # Проверка, что пуля другого цвета
                         if player == player_one:
                             print(f"Зеленый игрок попал в Синего! {player_two_count}")
                             player_two_count += 1
@@ -262,8 +225,8 @@ def main_game():
                         bullets.remove(bullet)  # Удаляем пулю при попадании
                         break
 
-            # Удаляем шарики, которые вышли за пределы экрана
-            if bullet["x"] <= 0 or bullet["x"] >= (W-100) or bullet["y"] <= 0 or bullet["y"] >= H:
+            # Удаляем пули, которые вышли за пределы экрана
+            if bullet.x <= 0 or bullet.x >= (W - 100) or bullet.y <= 0 or bullet.y >= H:
                 bullets.remove(bullet)
 
         # Управление игроками
@@ -346,12 +309,14 @@ def main_game():
         # Рисуем игроков
         player_one.draw(sc)
         player_two.draw(sc)
-        # for player_key, player in players.items():
-        #     pygame.draw.rect(sc, player["color"], (player["x"], player["y"], 20, 10))
+
 
         # Рисуем все шарики
         for bullet in bullets:
-            pygame.draw.circle(sc, bullet["color"], (int(bullet["x"]), int(bullet["y"])), 5)
+            bullet.move()
+            bullet.draw(sc)
+            if bullet.check_collision(obstacles):
+                bullets.remove(bullet)
 
 
 
