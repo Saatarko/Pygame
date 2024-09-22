@@ -33,7 +33,47 @@ FPS = 60
 
 pygame.display.set_caption('Всплывающее сообщение')
 
-# Флаги
+class Player:
+    def __init__(self, x, y, width, height, color):
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.color = color
+        self.surface = pygame.Surface((self.width, self.height))  # Создаем поверхность для игрока
+        self.surface.fill(self.color)  # Заполняем поверхность цветом
+        self.rect = self.surface.get_rect(topleft=(self.x, self.y))  # Создаем Rect на основе surface
+
+    def draw(self, screen):
+        screen.blit(self.surface, self.rect)  # Рисуем поверхность на экране
+
+    def move(self, dx, dy):
+        self.rect.x += dx
+        self.rect.y += dy
+
+class Bullet:
+    def __init__(self, x, y, x_dir, y_dir, color, speed=5):
+        self.x = x
+        self.y = y
+        self.x_dir = x_dir
+        self.y_dir = y_dir
+        self.color = color
+        self.speed = speed
+        self.rect = pygame.Rect(x - 5, y - 5, 10, 10)
+
+    def move(self):
+        self.x += self.x_dir * self.speed
+        self.y += self.y_dir * self.speed
+        self.rect.topleft = (self.x, self.y)
+
+    def draw(self, screen):
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), 5)
+
+    def check_collision(self, obstacles):
+        for obstacle in obstacles:
+            if self.rect.colliderect(obstacle):
+                return True
+        return False
 
 
 def show_popup(message, duration=3000):
@@ -55,12 +95,13 @@ def show_popup(message, duration=3000):
 # Переменные для игроков
 player_one = False
 player_two = False
-
+current_player = None
 
 
 # Функция для отображения меню
 def menu(game_over=False, message = None):
-    global player_one, player_two
+    global current_player
+
 
     if game_over:
         show_popup(message)
@@ -86,12 +127,12 @@ def menu(game_over=False, message = None):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = event.pos
                 if button_one.get_rect(topleft=(W // 2 - button_one.get_width() // 2, H // 2 + 10)).collidepoint(mouse_pos):
-                    player_one = True
-                    player_two = False
+                    current_player = "one"
+
                     return main_game()
                 elif button_two.get_rect(topleft=(W // 2 - button_two.get_width() // 2, H // 2 + 50)).collidepoint(mouse_pos):
-                    player_one = False
-                    player_two = True
+
+                    current_player = "two"
                     return main_game()
 
         pygame.display.flip()
@@ -102,19 +143,22 @@ def menu(game_over=False, message = None):
 def main_game():
 
 
-    global show_message
+    global show_message, current_player
     popup_message = None
     # Флаги для завершения игры
     game_over = False
 
     player_one_count = player_two_count = 0
 
+    print("current_player", current_player)
+    # # Информация о игроках
+    # players = {
+    #     "player_one": {"x": W / 2, "y": 380, "color": BLUE},
+    #     "player_two": {"x": W / 2, "y": 10, "color": GREEN}
+    # }
 
-    # Информация о игроках
-    players = {
-        "player_one": {"x": W / 2, "y": 380, "color": BLUE},
-        "player_two": {"x": W / 2, "y": 10, "color": GREEN}
-    }
+    player_one = Player(W / 2, 380, 20, 10, BLUE)
+    player_two = Player(W / 2, 10, 20, 10, GREEN)
 
     speed = 5
     ball_speed = 5
@@ -130,11 +174,19 @@ def main_game():
         pygame.Rect(150, 100, 80, 20),
         pygame.Rect(350, 300, 80, 20)
     ]
-    def check_collision_with_obstacles(rect):
-        """Проверяем, пересекается ли переданный прямоугольник с любым препятствием"""
+
+    # Функция проверки столкновения игрока с препятствиями и границами экрана
+    def check_collision_with_obstacles_and_bounds(rect):
+        """Проверяем, пересекается ли переданный прямоугольник с любым препятствием или выходит за границы экрана"""
+        # Проверяем границы экрана
+        if rect.left < 0 or rect.right > (W-100) or rect.top < 0 or rect.bottom > H:
+            return True
+
+        # Проверяем столкновения с препятствиями
         for obstacle in obstacles:
             if rect.colliderect(obstacle):
                 return True
+
         return False
 
     def check_bullet_collision(bullet_rect, target_rect):
@@ -148,17 +200,20 @@ def main_game():
             if event.type == pygame.QUIT:
                 exit()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # Инициализируем начальные координаты круга (по центру прямоугольника)
-                if player_one:
-                    x_cir = players["player_one"]["x"] + 10  # Центрируем по ширине прямоугольника
-                    y_cir = players["player_one"]["y"]
-                if player_two:
-                    x_cir = players["player_two"]["x"] + 10  # Центрируем по ширине прямоугольника
-                    y_cir = players["player_two"]["y"]
+                # Определяем текущие координаты игрока
+                if current_player == "one":
+                    player_rect = player_one.rect
+                if current_player == "two":
+                    player_rect = player_two.rect
+
+                # Инициализируем начальные координаты пули (по центру прямоугольника игрока)
+                x_cir = player_rect.centerx  # Центрируем по ширине
+                y_cir = player_rect.centery  # Центрируем по высоте
+
                 # Координаты точки клика
                 x_click, y_click = event.pos
 
-                # Рассчитываем разницу между точкой клика и точкой вылета
+                # Рассчитываем разницу между точкой клика и точкой вылета пули
                 dx = x_click - x_cir
                 dy = y_click - y_cir
 
@@ -169,15 +224,17 @@ def main_game():
                 x_direction = dx / length
                 y_direction = dy / length
 
-                # Создаем объект круга для проверки столкновений
+                # Создаем объект пули для проверки столкновений
                 bullet_rect = pygame.Rect(x_cir - 5, y_cir - 5, 10, 10)
-                # Добавляем новый шар в список с учетом цвета и принадлежности игрока
-                if not check_collision_with_obstacles(bullet_rect):
-                    if player_one:
-                        color = players["player_one"]["color"]
-                    if player_two:
-                        color = players["player_two"]["color"]
-                    bullets.append({"x": x_cir, "y": y_cir, "x_dir": x_direction, "y_dir": y_direction, "color": color})
+
+                # Добавляем новый шар в список, если нет столкновений
+                if not check_collision_with_obstacles_and_bounds(bullet_rect):
+                    if current_player == "one":
+                        color_ball = player_one.color
+                    if current_player == "two":
+                        color_ball = player_two.color
+                    bullets.append({"x": x_cir, "y": y_cir, "x_dir": x_direction, "y_dir": y_direction,
+                                    "color": color_ball})
 
         # Обновляем позицию каждого шарика
         for bullet in bullets[:]:
@@ -188,22 +245,21 @@ def main_game():
             bullet_rect = pygame.Rect(bullet["x"] - 5, bullet["y"] - 5, 10, 10)
 
             # Проверяем столкновение шарика с препятствиями
-            if check_collision_with_obstacles(bullet_rect):
+            if check_collision_with_obstacles_and_bounds(bullet_rect):
                 bullets.remove(bullet)  # Удаляем шарик, если он сталкивается с препятствием
                 continue  # Переходим к следующему шарику
 
             # Проверяем попадание в другого игрока
-            for player_key, player in players.items():
-                player_rect = pygame.Rect(player["x"], player["y"], 20, 10)  # Текущая позиция игрока
-                if check_bullet_collision(bullet_rect, player_rect):
-                    if bullet["color"] != player["color"]:  # Проверка цвета
-                        if player_key == "player_one":
+            for player in [player_one, player_two]:  # Переходим на работу с объектами игрока напрямую
+                if check_bullet_collision(bullet_rect, player.rect):  # Проверяем столкновение пули с rect игрока
+                    if bullet["color"] != player.color:  # Проверка, что пуля другого цвета
+                        if player == player_one:
                             print(f"Зеленый игрок попал в Синего! {player_two_count}")
-                            player_two_count +=1
+                            player_two_count += 1
                         else:
                             print(f"Синий игрок попал в Зеленого! {player_one_count}")
-                            player_one_count +=1
-                        bullets.remove(bullet)  # Удаляем шарик при попадании
+                            player_one_count += 1
+                        bullets.remove(bullet)  # Удаляем пулю при попадании
                         break
 
             # Удаляем шарики, которые вышли за пределы экрана
@@ -213,47 +269,45 @@ def main_game():
         # Управление игроками
         keys = pygame.key.get_pressed()
 
-        if player_one:
-        # Обновление второго игрока
+        if current_player == "one":
+            # Обновление второго игрока
 
-            new_rect_one = pygame.Rect(players["player_one"]["x"], players["player_one"]["y"], 20, 10)
-            if (keys[pygame.K_a] or keys[pygame.K_LEFT]) and players["player_one"]["x"] >= 10:  # Влево
-                new_rect_one.x -= speed
-                if not check_collision_with_obstacles(new_rect_one):
-                    players["player_one"]["x"] -= speed
-            if (keys[pygame.K_d] or keys[pygame.K_RIGHT]) and players["player_one"]["x"] <= 550:  # Вправо
-                new_rect_one.x += speed
-                if not check_collision_with_obstacles(new_rect_one):
-                    players["player_one"]["x"] += speed
-            if (keys[pygame.K_w] or keys[pygame.K_UP]) and  players["player_one"]["y"] >= 10:  # Вверх
-                new_rect_one.y -= speed
-                if not check_collision_with_obstacles(new_rect_one):
-                    players["player_one"]["y"] -= speed
-            if (keys[pygame.K_s] or keys[pygame.K_DOWN]) and players["player_one"]["y"] <= 380:  # Вниз
-                new_rect_one.y += speed
-                if not check_collision_with_obstacles(new_rect_one):
-                    players["player_one"]["y"] += speed
+            if (keys[pygame.K_a] or keys[pygame.K_LEFT]) and player_one.width >= 10:  # Влево
+                # Создаем временный rect для проверки столкновения
+                new_rect = player_one.rect.move(-speed, 0)
+                if not check_collision_with_obstacles_and_bounds(new_rect):
+                    player_one.move(-speed, 0)
+            if (keys[pygame.K_d] or keys[pygame.K_RIGHT]) and player_one.width <= 550:  # Вправо
+                new_rect = player_one.rect.move(speed, 0)
+                if not check_collision_with_obstacles_and_bounds(new_rect):
+                    player_one.move(+speed, 0)
+            if (keys[pygame.K_w] or keys[pygame.K_UP]) and player_one.height>= 10:  # Вверх
+                new_rect = player_one.rect.move(0, -speed)
+                if not check_collision_with_obstacles_and_bounds(new_rect):
+                    player_one.move(0, -speed)
+            if (keys[pygame.K_s] or keys[pygame.K_DOWN]) and player_one.height <= 380:  # Вниз
+                new_rect = player_one.rect.move(0, speed)
+                if not check_collision_with_obstacles_and_bounds(new_rect):
+                    player_one.move(0, speed)
 
-        if player_two:
+        if current_player == "two":
 
-            new_rect_one = pygame.Rect(players["player_two"]["x"], players["player_two"]["y"], 20, 10)
-            if (keys[pygame.K_a] or keys[pygame.K_LEFT]) and players["player_two"]["x"] >= 10:  # Влево
-                new_rect_one.x -= speed
-                if not check_collision_with_obstacles(new_rect_one):
-                    players["player_two"]["x"] -= speed
-            if (keys[pygame.K_d] or keys[pygame.K_RIGHT]) and players["player_two"]["x"] <= 550:  # Вправо
-                new_rect_one.x += speed
-                if not check_collision_with_obstacles(new_rect_one):
-                    players["player_two"]["x"] += speed
-            if (keys[pygame.K_w] or keys[pygame.K_UP]) and players["player_two"]["y"] >= 10:  # Вверх
-                new_rect_one.y -= speed
-                if not check_collision_with_obstacles(new_rect_one):
-                    players["player_two"]["y"] -= speed
-            if (keys[pygame.K_s] or keys[pygame.K_DOWN]) and players["player_two"]["y"] <= 380:  # Вниз
-                new_rect_one.y += speed
-                if not check_collision_with_obstacles(new_rect_one):
-                    players["player_two"]["y"] += speed
-
+            if (keys[pygame.K_a] or keys[pygame.K_LEFT]) and player_two.width>= 10:  # Влево
+                new_rect = player_two.rect.move(-speed, 0)
+                if not check_collision_with_obstacles_and_bounds(new_rect):
+                    player_two.move(-speed, 0)
+            if (keys[pygame.K_d] or keys[pygame.K_RIGHT]) and player_two.width <= 550:  # Вправо
+                new_rect = player_two.rect.move(+speed, 0)
+                if not check_collision_with_obstacles_and_bounds(new_rect):
+                    player_two.move(+speed, 0)
+            if (keys[pygame.K_w] or keys[pygame.K_UP]) and player_two.height >= 10:  # Вверх
+                new_rect = player_two.rect.move(0, -speed)
+                if not check_collision_with_obstacles_and_bounds(new_rect):
+                    player_two.move(0, -speed)
+            if (keys[pygame.K_s] or keys[pygame.K_DOWN]) and player_two.height <= 380:  # Вниз
+                new_rect = player_two.rect.move(0,speed)
+                if not check_collision_with_obstacles_and_bounds(new_rect):
+                    player_two.move(0, speed)
 
         if player_one_count >=5:
             player_one_count = player_two_count = 0
@@ -290,8 +344,10 @@ def main_game():
             pygame.draw.rect(sc, RED, obstacle)
 
         # Рисуем игроков
-        for player_key, player in players.items():
-            pygame.draw.rect(sc, player["color"], (player["x"], player["y"], 20, 10))
+        player_one.draw(sc)
+        player_two.draw(sc)
+        # for player_key, player in players.items():
+        #     pygame.draw.rect(sc, player["color"], (player["x"], player["y"], 20, 10))
 
         # Рисуем все шарики
         for bullet in bullets:
