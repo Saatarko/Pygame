@@ -77,17 +77,22 @@ def menu(game_over=False, message = None):
         game_over=False
 
     while True:
-        sc.fill(WHITE)
 
+        sc.fill(WHITE)
         welcome_text = font.render('Добро пожаловать в игру - мочилово!', True, (0, 0, 0))
         sc.blit(welcome_text, (W // 2 - welcome_text.get_width() // 2, H // 2 - 50))
 
         # Кнопки выбора игрока
-        button_one = font.render('Вход в игру', True, BLUE)
-        button_two = font.render('Выход', True, GREEN)
-        sc.blit(button_one, (W // 2 - button_one.get_width() // 2, H // 2 + 10))
-        sc.blit(button_two, (W // 2 - button_two.get_width() // 2, H // 2 + 50))
+        button_one_text = font.render('Вход в игру', True, BLUE)
+        button_two_text = font.render('Выход', True, GREEN)
 
+        # Определяем прямоугольники для кнопок
+        button_one_rect = button_one_text.get_rect(center=(W // 2, H // 2 + 10))
+        button_two_rect = button_two_text.get_rect(center=(W // 2, H // 2 + 50))
+
+        # Отображаем текст кнопок
+        sc.blit(button_one_text, button_one_rect.topleft)
+        sc.blit(button_two_text, button_two_rect.topleft)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -96,14 +101,12 @@ def menu(game_over=False, message = None):
 
             if event.type == pygame.MOUSEBUTTONDOWN:
                 mouse_pos = event.pos
-                if button_one.get_rect(topleft=(W // 2 - button_one.get_width() // 2, H // 2 + 10)).collidepoint(mouse_pos):
+                if button_one_rect.collidepoint(mouse_pos):
                     return main_game()
 
-                elif button_two.get_rect(topleft=(W // 2 - button_two.get_width() // 2, H // 2 + 50)).collidepoint(mouse_pos):
+                elif button_two_rect.collidepoint(mouse_pos):
                     pygame.quit()
                     exit()
-
-
 
         pygame.display.flip()
 
@@ -135,9 +138,19 @@ def main_game():
 
         # Проверка и обработка полученных данных
         if isinstance(data, dict):
-            # Позиция второго игрока
-            player_two_pos = data["position"]
-            bullets_for_player_two = data["bullets"]
+
+            if "game_over" in data and data["game_over"]:
+                # Обработка конца игры
+                menu(game_over=True,message=data["message"])
+                print(data["message"])  # Вывод сообщения о конце игры
+                # Здесь можно вызвать функцию для завершения игры или показать сообщение
+            else:
+                # Обработка обновлений для второго игрока и пуль
+                player_two_pos = data["position"]
+                bullets_for_player_two = data["bullets"]
+
+                if "count" in data:
+                    player_one_score, player_two_score = data["count"]
 
             # Обновляем позицию второго игрока
             player_two.rect.x, player_two.rect.y = player_two_pos
