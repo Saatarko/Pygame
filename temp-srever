@@ -1,0 +1,58 @@
+import socket
+from _thread import *
+import pickle
+
+# server = "192.168.0.107"
+server = "localhost"
+port = 8080
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+try:
+    s.bind((server, port))
+except socket.error as e:
+    print(str(e))
+
+s.listen(2)  # слушаем порт и ограничиваем кол-во подключений
+print('Ожидайте подключения. Игра загружается')
+
+# Стартовые позиции обоих игроков
+pos = [(350, 380), (350, 10)]
+
+
+
+def threaded_client(conn, player):
+    conn.send(pickle.dumps(pos[player]))  # Отправляем начальную позицию игрока
+    while True:
+        try:
+            # Получаем данные от клиента
+            data = pickle.loads(conn.recv(2048))
+            print("data", data)
+            pos[player] = data  # Обновляем позицию игрока
+
+            if not data:
+                print("Disconnected")
+                break
+            else:
+                if player == 1:
+                    reply = pos[0]  # Отправляем позицию другого игрока
+                else:
+                    reply = pos[1]
+
+                print("Received: ", data)
+                print("Sending : ", reply)
+
+            conn.sendall(pickle.dumps(reply))  # Отправляем ответ клиенту
+        except:
+            break
+
+    print("Lost connection")
+    conn.close()
+
+currentPlayer = 0
+while True:
+    conn, addr = s.accept()
+    print("Connected to:", addr)
+
+    start_new_thread(threaded_client, (conn, currentPlayer))
+    currentPlayer += 1

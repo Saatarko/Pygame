@@ -1,32 +1,30 @@
 import socket
-
+import pickle
 
 class Network:
-
     def __init__(self):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server = "192.168.0.107"
-        self.port = 8080
+        self.server = "localhost"
+        self.port = 8000
         self.addr = (self.server, self.port)
         self.pos = self.connect()
 
     def getPos(self):
         return self.pos
 
-    def connect(self):      # метод подключения
+    def connect(self):
         try:
             self.client.connect(self.addr)
-            return self.client.recv(2048).decode()   # после подключения мы сразу получаем ответную инфу от серввера
+            # Получаем начальные данные от сервера (используем pickle)
+            return pickle.loads(self.client.recv(2048))  # Получаем данные как байты и декодируем с помощью pickle
+        except Exception as e:
+            print(e)
 
-        except:
-            pass
-
-
-    def send (self, data):     # метод отправки сообщений
+    def send(self, data):
         try:
-            self.client.send(str.encode(data))
-            return self.client.recv(2048).decode()
-
+            # Отправляем данные в виде байтов, сериализованных с помощью pickle
+            self.client.send(pickle.dumps(data))
+            # Получаем ответ от сервера (также в байтовом формате)
+            return pickle.loads(self.client.recv(2048))  # Декодируем полученные данные с помощью pickle
         except socket.error as e:
-            print(str(e))
-
+            print(e)
