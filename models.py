@@ -2,13 +2,17 @@ import pygame
 pygame.init()
 
 # Список для хранения всех препятствий
-obstacles = [
-    pygame.Rect(250, 200, 80, 20),
-    pygame.Rect(100, 200, 80, 20),
-    pygame.Rect(400, 200, 80, 20),
-    pygame.Rect(150, 100, 80, 20),
-    pygame.Rect(350, 300, 80, 20)
-]
+
+def get_obstacles():
+    return [
+        pygame.Rect(250, 200, 80, 20),
+        pygame.Rect(100, 200, 80, 20),
+        pygame.Rect(400, 200, 80, 20),
+        pygame.Rect(150, 100, 80, 20),
+        pygame.Rect(350, 300, 80, 20)
+    ]
+
+obstacles = get_obstacles()
 
 class Player:
     def __init__(self, x, y, width, height, color):
@@ -100,3 +104,13 @@ class Bullet:
             if self.rect.colliderect(player.rect):
                 return player  # Возвращаем игрока, если произошло столкновение
         return None
+
+    def serialize(self):
+        return {
+            "x": self.x,
+            "y": self.y,
+            "x_dir": self.x_dir,
+            "y_dir": self.y_dir,
+            "color": self.color,
+            "speed": self.speed
+        }

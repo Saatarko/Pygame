@@ -36,7 +36,7 @@ class Network:
             self.client.send(pickle.dumps(data))
 
             # Получаем ответ от сервера (также в байтовом формате)
-            response = self.client.recv(2048)
+            response = self.client.recv(4096)
             if not response:
                 raise Exception("Connection closed")
 

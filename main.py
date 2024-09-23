@@ -67,6 +67,7 @@ player_two = False
 
 # Список для хранения пуль
 bullets = []
+bullets_for_player_two = []
 
 # Функция для отображения меню
 def menu(game_over=False, message = None):
@@ -109,9 +110,7 @@ def menu(game_over=False, message = None):
 
 def main_game():
 
-    global show_message
-    popup_message = None
-
+    global bullets_for_player_two
     player_one_score = player_two_score = 0
 
     # Соединение с сервером
@@ -128,25 +127,25 @@ def main_game():
 
     while True:
 
-        # Получение позиции второго игрока
         data_to_send = {
             "position": (player_one.x, player_one.y),
-            "bullets": [bullet.__dict__ for bullet in bullets]  # Добавьте все пули текущего игрока
+            # Теперь пули на стороне клиента отправлять не нужно, их будет обрабатывать сервер
         }
         data = n.send(data_to_send)
 
-        # Убедитесь, что data является словарем
+        # Проверка и обработка полученных данных
         if isinstance(data, dict):
+            # Позиция второго игрока
             player_two_pos = data["position"]
             bullets_for_player_two = data["bullets"]
 
+            # Обновляем позицию второго игрока
             player_two.rect.x, player_two.rect.y = player_two_pos
 
-            # Обновление пуль
-            bullets_for_player_two = [Bullet(**bullet_data) for bullet_data in bullets_for_player_two]
-            bullets.extend(bullets_for_player_two)  # Добавляем пули второго игрока
-        else:
-            print("Ошибка: получены неверные данные:", data)
+            # Очищаем локальный список пуль и обновляем его
+            bullets.clear()  # Очищаем старые пули
+            # Добавляем пули второго игрока и обновляем их состояние
+            bullets.extend([Bullet(**bullet_data) for bullet_data in bullets_for_player_two])
 
         for event in pygame.event.get():
 
@@ -155,12 +154,12 @@ def main_game():
             if event.type == pygame.QUIT:
                 exit()
             elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                # Определяем текущие координаты игрока (игрока на клиенте)
+                # Определяем текущие координаты игрока
                 player_rect = player_one.rect
 
-                # Инициализируем начальные координаты пули (по центру прямоугольника игрока)
-                x_cir = player_rect.centerx  # Центрируем по ширине
-                y_cir = player_rect.centery  # Центрируем по высоте
+                # Начальные координаты пули (по центру прямоугольника игрока)
+                x_cir = player_rect.centerx
+                y_cir = player_rect.centery
 
                 # Координаты точки клика
                 x_click, y_click = event.pos
@@ -169,75 +168,24 @@ def main_game():
                 dx = x_click - x_cir
                 dy = y_click - y_cir
 
-                # Вычисляем длину вектора (гипотенуза) для нормализации скорости
+                # Вычисляем длину вектора для нормализации
                 length = math.sqrt(dx ** 2 + dy ** 2)
 
-                # Определяем направления по x и y, нормализуя вектор
+                # Определяем направления по x и y
                 x_direction = dx / length
                 y_direction = dy / length
 
-                # Определяем цвет пули в зависимости от игрока
-                color_ball = player_one.color  # Цвет пули будет цветом текущего игрока
+                # Определяем цвет пули
+                color_ball = player_one.color
 
                 # Создаем объект пули
                 bullet = Bullet(x_cir, y_cir, x_direction, y_direction, color_ball)
 
                 # Проверяем столкновение пули с препятствиями
                 if not bullet.check_collision(obstacles):
-                    bullets.append(bullet)  # Добавляем пулю в список, если нет коллизии
-                    # Отправка новой пули
-                    bullet_data = {
-                        "x": bullet.x,
-                        "y": bullet.y,
-                        "x_dir": bullet.x_dir,
-                        "y_dir": bullet.y_dir,
-                        "color": bullet.color
-                    }
-                    n.send({"NEW_BULLET": bullet_data})
-
-        # Обновляем позицию каждого шарика
-        for bullet in bullets[:]:
-            # Перемещение пули
-            bullet.move()
-
-            # Проверяем столкновение пули с препятствиями
-            if bullet.check_collision(obstacles):
-                bullets.remove(bullet)
-                continue  # Переходим к следующей пуле
-
-            # Проверяем попадание в другого игрока
-            if bullet.rect.colliderect(player_two.rect):  # Проверяем столкновение с другим игроком
-                if bullet.color == player_one.color:  # Если пуля от player_one
-                    player_one_score += 1  # Начисляем очки игроку один
-                    print(f"Синий игрок попал в Зеленого! Счет Синего: {player_one_score}")
-                else:  # Если пуля от player_two
-                    player_two_score += 1  # Начисляем очки игроку два
-                    print(f"Зеленый игрок попал в Синего! Счет Зеленого: {player_two_score}")
-                bullets.remove(bullet)  # Удаляем пулю при попадании
-                break
-
-            # Удаляем пули, которые вышли за пределы экрана
-            if bullet.x <= 0 or bullet.x >= (W - 100) or bullet.y <= 0 or bullet.y >= H:
-                bullets.remove(bullet)
-
-            # Отрисовываем пулю
-            bullet.draw(sc)
-        #
-        # if player_one_score >= 5:
-        #     popup_message = "Игрок 1 выиграл"
-        #     game_over = True
-        #     n.send(f"GAME_OVER:{popup_message}")
-        #     # Обнуляем счетчики только после отправки сообщения
-        #     player_one_score = player_two_score = 0
-        #     menu(game_over, popup_message)
-        #
-        # if player_two_score >= 5:
-        #     popup_message = "Игрок 2 выиграл"
-        #     game_over = True
-        #     n.send(f"GAME_OVER:{popup_message}")
-        #     player_one_score = player_two_score = 0
-        #     menu(game_over, popup_message)
-        # Управление игроками
+                    bullets.append(bullet)  # Добавляем пулю в список
+                    # Отправка новой пули с использованием метода serialize
+                    n.send({"NEW_BULLET": bullet.serialize()})
 
         player_one.move()
 
@@ -266,10 +214,8 @@ def main_game():
         player_one.draw(sc)
         player_two.draw(sc)
 
-        for bullet in bullets[:]:
-            # рисование пули
+        for bullet in bullets:
             bullet.draw(sc)
-
 
         pygame.display.update()
 
