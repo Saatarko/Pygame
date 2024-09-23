@@ -144,8 +144,8 @@ def main_game():
 
             # Очищаем локальный список пуль и обновляем его
             bullets.clear()  # Очищаем старые пули
-            # Добавляем пули второго игрока и обновляем их состояние
-            bullets.extend([Bullet(**bullet_data) for bullet_data in bullets_for_player_two])
+            bullets.extend([Bullet(**bullet_data) for bullet_data in data["bullets"]])  # Обновляем пули обоих игроков
+
 
         for event in pygame.event.get():
 

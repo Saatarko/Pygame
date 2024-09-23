@@ -67,9 +67,9 @@ def threaded_client(conn, player):
             # Формируем ответ для клиента
             reply = {
                 "position": pos[1 - player],  # Позиция другого игрока
-                "bullets": [bullet.serialize() for bullet in bullets[1 - player]]  # Пули другого игрока
+                "bullets": [bullet.serialize() for bullet in bullets[player]] +
+                           [bullet.serialize() for bullet in bullets[1 - player]],  # Пули обоих игроков
             }
-
             conn.sendall(pickle.dumps(reply))
 
         except Exception as e:
