@@ -1,3 +1,4 @@
+
 import socket
 import pickle
 
@@ -20,11 +21,29 @@ class Network:
         except Exception as e:
             print(e)
 
+    # def send(self, data):
+    #     try:
+    #         # Отправляем данные в виде байтов, сериализованных с помощью pickle
+    #         self.client.send(pickle.dumps(data))
+    #         # Получаем ответ от сервера (также в байтовом формате)
+    #         return pickle.loads(self.client.recv(2048))  # Декодируем полученные данные с помощью pickle
+    #     except socket.error as e:
+    #         print(e)
+
     def send(self, data):
         try:
             # Отправляем данные в виде байтов, сериализованных с помощью pickle
             self.client.send(pickle.dumps(data))
+
             # Получаем ответ от сервера (также в байтовом формате)
-            return pickle.loads(self.client.recv(2048))  # Декодируем полученные данные с помощью pickle
+            response = self.client.recv(2048)
+            if not response:
+                raise Exception("Connection closed")
+
+            return pickle.loads(response)  # Декодируем полученные данные с помощью pickle
         except socket.error as e:
-            print(e)
+            print(f"Socket error: {e}")
+        except EOFError as e:
+            print(f"EOFError: {e}")
+        except Exception as e:
+            print(f"Unexpected error: {e}")

@@ -1,9 +1,14 @@
+
 import pickle
 import socket
 from _thread import *
 
+from models import Bullet
+
 # Позиции для двух игроков
 pos = [(350, 380), (350, 10)]  # Начальные координаты для каждого игрока
+
+bullets = {0: [], 1: []}  # Словарь для хранения пуль каждого игрока
 
 def threaded_client(conn, player):
     # Отправляем начальную позицию игрока
@@ -14,23 +19,30 @@ def threaded_client(conn, player):
             # Получаем данные от клиента
             data = pickle.loads(conn.recv(2048))
             print("data", data)
-            pos[player] = data  # Обновляем позицию игрока
+
+            # Обновляем позицию игрока
+            pos[player] = data["position"]  # Обновляем позицию игрока
 
             if not data:
                 print("Disconnected")
                 break
-            else:
-                # Отправляем позицию другого игрока
-                if player == 1:
-                    reply = pos[0]
-                else:
-                    reply = pos[1]
 
-                print("Received: ", data)
-                print("Sending : ", reply)
+            if "NEW_BULLET" in data:
+                bullet_data = data["NEW_BULLET"]
+                bullet = Bullet(**bullet_data)  # Создаем пулю и добавляем в соответствующий список
+                bullets[player].append(bullet)
 
+            # Подготовка ответа для клиента
+            reply = {
+                "position": pos[1 - player],  # Позиция другого игрока
+                "bullets": [bullet.__dict__ for bullet in bullets[1 - player]]  # Пули другого игрока
+            }
+
+            print("Sending:", reply)
             conn.sendall(pickle.dumps(reply))
-        except:
+
+        except Exception as e:
+            print(f"Error: {e}")
             break
 
     print("Lost connection")
