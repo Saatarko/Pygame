@@ -2,6 +2,7 @@ import pygame
 import math
 
 from models import Player, Bullet
+from network import Network
 
 pygame.init()
 
@@ -63,6 +64,7 @@ def menu(game_over=False, message = None):
     global current_player
 
 
+
     if game_over:
         show_popup(message)
         game_over=False
@@ -103,7 +105,13 @@ def menu(game_over=False, message = None):
         pygame.display.flip()
 
 
+def read_pos(str):              # разбиваем получаемые координаты типа (67, 55) на две цифры
+    str = str.split(",")
+    return int(str[0]), int(str[1])
 
+
+def make_pos(tup):
+    return str(tup[0]) + "," + str(tup[1])
 
 def main_game():
 
@@ -113,17 +121,20 @@ def main_game():
     # Флаги для завершения игры
     game_over = False
 
+
+
     player_one_count = player_two_count = 0
 
-    print("current_player", current_player)
     # # Информация о игроках
-    # players = {
-    #     "player_one": {"x": W / 2, "y": 380, "color": BLUE},
-    #     "player_two": {"x": W / 2, "y": 10, "color": GREEN}
-    # }
+    n = Network()
+    startPos = read_pos(n.getPos())
 
-    player_one = Player(W / 2, 380, 20, 10, BLUE)
-    player_two = Player(W / 2, 10, 20, 10, GREEN)
+
+    # player_one = Player(W / 2, 380, 20, 10, BLUE)
+    # player_two = Player(W / 2, 10, 20, 10, GREEN)
+
+    player_one = Player(startPos[0], startPos[1], 20, 10, BLUE)
+    player_two = Player(startPos[0], startPos[1], 20, 10, GREEN)
 
     speed = 5
     ball_speed = 5
@@ -160,6 +171,11 @@ def main_game():
         return bullet_rect.colliderect(target_rect)
 
     while True:
+        #
+        #
+        player_twoPos = read_pos(n.send(make_pos((player_one.x, player_one.y))))
+        player_two.x = player_twoPos[0]
+        player_two.y = player_twoPos[1]
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
