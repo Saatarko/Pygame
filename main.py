@@ -67,7 +67,7 @@ player_two = False
 
 # Список для хранения пуль
 bullets = []
-bullets_for_player_two = []
+bullets2 = []
 
 # Функция для отображения меню
 def menu(game_over=False, message = None):
@@ -147,7 +147,7 @@ def main_game():
             else:
                 # Обработка обновлений для второго игрока и пуль
                 player_two_pos = data["position"]
-                bullets_for_player_two = data["bullets"]
+                # bullets_for_player_two = data["bullets"]
 
                 if "count" in data:
                     player_one_score, player_two_score = data["count"]
@@ -156,9 +156,13 @@ def main_game():
             player_two.rect.x, player_two.rect.y = player_two_pos
 
             # Очищаем локальный список пуль и обновляем его
-            bullets.clear()  # Очищаем старые пули
-            bullets.extend([Bullet(**bullet_data) for bullet_data in data["bullets"]])  # Обновляем пули обоих игроков
 
+            bullets.clear()  # Очищаем старые пули
+            bullets.extend([Bullet(bullet_data["x"], bullet_data["y"], bullet_data["x_dir"], bullet_data["y_dir"], BLUE) for bullet_data in data["bullets"]])
+
+            # Очищаем локальный список пуль для второго игрока
+            bullets2.clear()  # Очищаем старые пули
+            bullets2.extend([Bullet(bullet_data["x"], bullet_data["y"], bullet_data["x_dir"], bullet_data["y_dir"], GREEN) for bullet_data in data["bullets2"]])
 
         for event in pygame.event.get():
 
@@ -228,6 +232,8 @@ def main_game():
         player_two.draw(sc)
 
         for bullet in bullets:
+            bullet.draw(sc)
+        for bullet in bullets2:
             bullet.draw(sc)
 
         pygame.display.update()

@@ -113,8 +113,8 @@ def threaded_client(conn, player):
 
             else:
                 reply["position"] = pos[1 - player]  # Позиция другого игрока
-                reply["bullets"] = [bullet.serialize() for bullet in bullets[player]] + \
-                                   [bullet.serialize() for bullet in bullets[1 - player]]  # Пули обоих игроков
+                reply["bullets"] = [bullet.serialize() for bullet in bullets[player]]
+                reply["bullets2"] = [bullet.serialize() for bullet in bullets[1 - player]]  # Пули обоих игроков
                 reply["count"] = (player_one_count,player_two_count)
             conn.sendall(pickle.dumps(reply))
 
